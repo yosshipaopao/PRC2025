@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "LBR-127")(type "KiCad")(uri "${KIPRJMOD}/LBR-127HLD Libraries/LBR-127HLD.kicad_sym")(options "")(descr ""))
+)

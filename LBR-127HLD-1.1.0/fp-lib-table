@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "LBR-127HLD")(type "KiCad")(uri "${KIPRJMOD}/LBR-127HLD Libraries/LBR-127HLD.pretty")(options "")(descr ""))
+)
