@@ -1,3 +1,6 @@
 /Sensor/Sensor-backups
 /Fires/Fires-backups
 /Main/Main-backups
+/Sensor/production/backups
+/Main/production/backups
+/Fires/production/backups

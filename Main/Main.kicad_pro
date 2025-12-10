@@ -70,18 +70,6 @@
         [
           "courtyards_overlap|105905000|46495000|90bac1f3-409b-4c61-8f16-b16cbe08e802|97e64120-6df1-4742-9f8b-d3fa978049e2",
           "一列にする"
-        ],
-        [
-          "courtyards_overlap|60165000|61705000|18360b9d-36e5-449b-b397-98cb1e0f3099|512ba3a6-c314-4c3d-bab2-6ceb62611076",
-          "一列にする"
-        ],
-        [
-          "courtyards_overlap|60165000|82065000|149857e7-2c01-4791-bace-083f0135632c|512ba3a6-c314-4c3d-bab2-6ceb62611076",
-          "一列にする"
-        ],
-        [
-          "courtyards_overlap|60215000|87145000|149857e7-2c01-4791-bace-083f0135632c|d4a158e4-866d-478c-9b06-783588aa487a",
-          "一列にする"
         ]
       ],
       "meta": {
@@ -164,7 +152,7 @@
         "min_track_width": 0.0,
         "min_via_annular_width": 0.1,
         "min_via_diameter": 0.5,
-        "solder_mask_to_copper_clearance": 0.0,
+        "solder_mask_to_copper_clearance": 0.005,
         "use_height_for_length_calcs": true
       },
       "teardrop_options": [

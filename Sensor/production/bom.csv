@@ -1,0 +1,8 @@
+﻿Designator,Footprint,Quantity,Value,LCSC Part #
+"D1, D2, D3, D4, D5",0603,5,LED,
+J1,PinSocket_1x08_P2.54mm_Vertical,1,Conn_01x08_Socket,
+R1,0603,1,220,
+"R10, R4, R6, R8",0603,4,200,
+"R2, R3, R5, R7, R9",0603,5,1k,
+"U1, U2, U3, U4, U5",LBR-127HLD,5,LBR-127HLD,
+U6,SSOP-20_4.4x6.5mm_P0.65mm,1,74HC244,

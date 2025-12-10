@@ -1032,7 +1032,7 @@
 				)
 			)
 		)
-		(property "Value" "68"
+		(property "Value" "100"
 			(at 138.43 130.81 90)
 			(effects
 				(font
@@ -1040,7 +1040,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
 			(at 138.43 132.842 90)
 			(effects
 				(font
@@ -1100,7 +1100,7 @@
 				)
 			)
 		)
-		(property "Value" "68"
+		(property "Value" "100"
 			(at 138.43 100.33 90)
 			(effects
 				(font
@@ -1108,7 +1108,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
 			(at 138.43 102.362 90)
 			(effects
 				(font
@@ -1245,7 +1245,7 @@
 				)
 			)
 		)
-		(property "Value" "68"
+		(property "Value" "100"
 			(at 138.43 110.49 90)
 			(effects
 				(font
@@ -1253,7 +1253,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
 			(at 138.43 112.522 90)
 			(effects
 				(font
@@ -1313,7 +1313,7 @@
 				)
 			)
 		)
-		(property "Value" "68"
+		(property "Value" "100"
 			(at 138.43 120.65 90)
 			(effects
 				(font
@@ -1321,7 +1321,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
 			(at 138.43 122.682 90)
 			(effects
 				(font
@@ -1891,7 +1891,7 @@
 				)
 			)
 		)
-		(property "Value" "68"
+		(property "Value" "100"
 			(at 138.43 90.17 90)
 			(effects
 				(font
@@ -1899,7 +1899,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
 			(at 138.43 92.202 90)
 			(effects
 				(font
