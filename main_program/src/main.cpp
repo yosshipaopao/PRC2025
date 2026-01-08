@@ -5,14 +5,18 @@
 
 HardwareSerial mp3Serial(1); // UART1
 DFRobotDFPlayerMini mp3;
-const int M1_P = 33, M1_L = 34, M1_R = 35, M2_R = 36, M2_L = 37, M2_P = 38;
-const int M3_P = 39, M3_L = 40, M3_R = 41, M4_R = 42, M4_L = 43, M4_P = 44;
+const int M1_P = 39, M1_L = 37, M1_R = 38, M2_R = 26, M2_L = 21, M2_P = 33;
+const int M3_P = 34, M3_L = 35, M3_R = 36, M4_R = 19, M4_L = 20, M4_P = 18;
 const int sensor_pins[] = {13, 14, 15, 16, 17};
 Motor m1(M1_L, M1_R, M1_P);
 Motor m2(M2_L, M2_R, M2_P);
 Motor m3(M3_L, M3_R, M3_P);
 Motor m4(M4_L, M4_R, M4_P);
 Sensor sensor((int *)sensor_pins, 5, 2000);
+
+const int RUN_SP = 100;
+const int HALF_STOP_SP = 50;
+const int STOP_SP = -20;
 
 // -255 ~ 255
 void run_motor(int left_speed, int right_speed)
@@ -44,46 +48,54 @@ void setup()
   m3.setup();
   m4.setup();
   sensor.setup();
-  //mp3Serial.begin(9600, SERIAL_8N1, 7, 8);
-/*
-  while (!mp3.begin(mp3Serial))
-  {
-    Serial.println("DFPlayer Mini not detected!");
-    delay(1000);
-  }
-  mp3.volume(30); // Set volume value (0~30).
-  */
 }
 
 void loop()
 {
   sensor.read();
 
-  // sensor.isBlack(i) -> bool
-  sensor.print_raw();
-
   // Line Tracer Logic
-  if (sensor.isBlack(0) && !sensor.isBlack(4))
+  switch (sensor.state())
   {
-    // Turn Right
-    run_motor(150, 255);
+  case 0b11111:
+  case 0b01110:
+  case 0b00100:
+    run_motor(RUN_SP, RUN_SP);
+    break;
+  case 0b01100:
+    run_motor(RUN_SP, HALF_STOP_SP);
+    break;
+  case 0b00110:
+    run_motor(HALF_STOP_SP, RUN_SP);
+    break;
+  case 0b10000:
+    run_motor(RUN_SP, STOP_SP);
+    break;
+  case 0b00001:
+    run_motor(STOP_SP, RUN_SP);
+    break;
+  case 0b11000:
+    run_motor(RUN_SP, STOP_SP);
+    break;
+  case 0b11100:
+    run_motor(RUN_SP, STOP_SP);
+    break;
+  case 0b11110:
+    run_motor(HALF_STOP_SP, RUN_SP);
+    break;
+  case 0b00011:
+    run_motor(STOP_SP, RUN_SP);
+    break;
+  case 0b00111:
+    run_motor(STOP_SP, RUN_SP);
+    break;
+  case 0b01111:
+    run_motor(HALF_STOP_SP, RUN_SP);
+    break;
+  default:
+    run_motor(RUN_SP, RUN_SP);
+    break;
   }
-  else if (!sensor.isBlack(0) && sensor.isBlack(4))
-  {
-    // Turn Left
-    run_motor(255, 150);
-  }
-  else if (sensor.isBlack(0) && sensor.isBlack(4))
-  {
-    // Move Forward
-    run_motor(255, 255);
-  }
-  else
-  {
-    // Stop
-    stop_motor();
-  }
-  
 
   delay(10);
 }
