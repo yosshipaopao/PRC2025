@@ -14,6 +14,7 @@ Motor m3(M3_L, M3_R, M3_P);
 Motor m4(M4_L, M4_R, M4_P);
 Sensor sensor((int *)sensor_pins, 5, 2000);
 
+// -255 ~ 255
 void run_motor(int left_speed, int right_speed)
 {
   m1.run(left_speed);
@@ -32,8 +33,10 @@ void stop_motor()
 
 void setup()
 {
-  Serial.begin(115200);
   delay(2000);
+
+  Serial.begin(9600);
+  Serial.println("Starting...");
 
   pinMode(6, OUTPUT);
   m1.setup();
@@ -41,28 +44,46 @@ void setup()
   m3.setup();
   m4.setup();
   sensor.setup();
-  mp3Serial.begin(9600, SERIAL_8N1, 7, 8);
-
-  if (!mp3.begin(mp3Serial))
+  //mp3Serial.begin(9600, SERIAL_8N1, 7, 8);
+/*
+  while (!mp3.begin(mp3Serial))
   {
-    while (true)
-    {
-      Serial.println("DFPlayer Mini not detected!");
-      delay(1000);
-    }
+    Serial.println("DFPlayer Mini not detected!");
+    delay(1000);
   }
   mp3.volume(30); // Set volume value (0~30).
+  */
 }
 
 void loop()
 {
-  for (int i = 0; i < 5; i++)
-  {
-    int sensor_value = analogRead(sensor_pins[i]);
+  sensor.read();
 
-    Serial.print(sensor_value);
-    Serial.print(" ");
+  // sensor.isBlack(i) -> bool
+  sensor.print_raw();
+
+  // Line Tracer Logic
+  if (sensor.isBlack(0) && !sensor.isBlack(4))
+  {
+    // Turn Right
+    run_motor(150, 255);
   }
-  Serial.println();
-  delay(100);
+  else if (!sensor.isBlack(0) && sensor.isBlack(4))
+  {
+    // Turn Left
+    run_motor(255, 150);
+  }
+  else if (sensor.isBlack(0) && sensor.isBlack(4))
+  {
+    // Move Forward
+    run_motor(255, 255);
+  }
+  else
+  {
+    // Stop
+    stop_motor();
+  }
+  
+
+  delay(10);
 }
