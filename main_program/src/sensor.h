@@ -14,6 +14,15 @@ public:
     int val(int pin);
     int state();
     void print_raw();
+    void print_state()
+    {
+        int st = state();
+        for (int i = pin_size - 1; i >= 0; i--)
+        {
+            Serial.print((st >> i) & 1);
+        }
+        Serial.println();
+    }
 
 private:
     int *pins;
