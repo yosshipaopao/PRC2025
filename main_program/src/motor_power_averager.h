@@ -16,6 +16,7 @@ private:
 
 public:
     MotorPowerAverager(size_t size);
+    ~MotorPowerAverager();
     void addPower(int l, int r);
     int getL();
     int getR();
@@ -51,6 +52,12 @@ MotorPowerAverager::MotorPowerAverager(size_t size)
     count = 0;
     left_sum = 0;
     right_sum = 0;
+}
+
+MotorPowerAverager::~MotorPowerAverager()
+{
+    delete[] left_powers;
+    delete[] right_powers;
 }
 
 void MotorPowerAverager::addPower(int l, int r)

@@ -20,18 +20,6 @@ private:
     StateMapEntry *state_map;
     int map_size;
 
-    int mapState(int raw_state)
-    {
-        if (state_map == NULL)
-            return raw_state;
-        for (int i = 0; i < map_size; i++)
-        {
-            if (state_map[i].state == raw_state)
-                return state_map[i].group_id;
-        }
-        return 0; // Unregistered state
-    }
-
     void printStateBinary(int state)
     {
         for (int i = 4; i >= 0; i--)
@@ -51,6 +39,17 @@ public:
     void setStateMap(StateMapEntry *map, int size);
     int getCurrentState();
     int getCurrentStateCount() { return state_count; }
+    int mapState(int raw_state)
+    {
+        if (state_map == NULL)
+            return raw_state;
+        for (int i = 0; i < map_size; i++)
+        {
+            if (state_map[i].state == raw_state)
+                return state_map[i].group_id;
+        }
+        return -1; // Unregistered state - 前のstateを維持
+    }
 };
 
 StateManager::StateManager()

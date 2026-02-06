@@ -1,0 +1,29 @@
+{
+  "build": {
+    "core": "esp32",
+    "variant": "esp32s2",
+    "mcu": "esp32s2",
+    "f_cpu": "240000000L",
+    "f_flash": "80000000L",
+    "flash_size": "4MB",
+    "flash_mode": "dio"
+  },
+  "connectivity": [
+    "wifi"
+  ],
+  "frameworks": [
+    "arduino",
+    "espidf"
+  ],
+  "name": "ESP32-S2-DevKitM-1",
+  "platform": "espressif32",
+  "upload": {
+    "flash_size": "4MB",
+    "maximum_size": 4194304,
+    "maximum_ram_size": 327680,
+    "speed": 460800,
+    "require_upload_port": true
+  },
+  "url": "https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32-s2-devkitm-1.html",
+  "vendor": "Espressif"
+}

@@ -2,6 +2,7 @@
 #define _sensor_h
 
 #include <Arduino.h>
+#include "debug.h"
 
 class Sensor
 {
@@ -14,15 +15,7 @@ public:
     int val(int pin);
     int state();
     void print_raw();
-    void print_state()
-    {
-        int st = state();
-        for (int i = pin_size - 1; i >= 0; i--)
-        {
-            Serial.print((st >> i) & 1);
-        }
-        Serial.println();
-    }
+    void print_state();
 
 private:
     int *pins;
@@ -86,10 +79,21 @@ void Sensor::print_raw()
 {
     for (int i = 0; i < pin_size; i++)
     {
-        Serial.print(values[i]);
-        Serial.print(" ");
+        Debug::print(values[i]);
+        Debug::print(" ");
     }
-    Serial.println();
+    Debug::println();
+}
+
+void Sensor::print_state()
+{
+    int current_state = state();
+    Debug::print("0b");
+    for (int i = pin_size - 1; i >= 0; i--)
+    {
+        Debug::print((current_state & (1 << i)) ? "1" : "0");
+    }
+    Debug::println();
 }
 
 #endif

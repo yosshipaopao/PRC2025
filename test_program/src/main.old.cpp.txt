@@ -1,0 +1,452 @@
+#include <Arduino.h>
+
+// デバッグ出力設定
+#define ENABLE_SENSOR_PRINT 0 // 0:無効, 1:有効
+
+// パターン認識用ピン定義
+const int PATTERN_PIN_A = 9;
+const int PATTERN_PIN_B = 10;
+const int PATTERN_PIN_C = 11;
+const int PATTERN_CONFIRM_COUNT = 20; // 20回連続で同じパターン
+
+// モーターピン定義（左ピン, 右ピン, PWMピン）
+const int M1_L = 37, M1_R = 38, M1_P = 39; // left motor (front)
+const int M2_L = 21, M2_R = 26, M2_P = 33; // left motor (back)
+const int M3_L = 35, M3_R = 36, M3_P = 34; // right motor (front)
+const int M4_L = 20, M4_R = 19, M4_P = 18; // right motor (back)
+
+// センサーピン定義（向きが反対のため逆順）
+// 12番ピンはライン検出に使用しない
+int sensor_pins[] = {12, 17, 16, 15, 14, 13};
+int active_sensor_pins[] = {17, 16, 15, 14, 13};
+const int SENSOR_COUNT = 6;
+const int SENSOR_THRESHOLD = 2000;
+
+// ライントレース制御パラメータ
+const int ACTIVE_SENSOR_COUNT = 5; // 12番ピンは未使用
+const int BASE_SPEED = 110;        // 0-255
+const int MAX_SPEED = 220;         // 0-255
+const float KP = 45.0f;            // 比例ゲイン
+const float KD = 25.0f;            // 微分ゲイン
+const float ERROR_DEADBAND = 0.10f;
+
+// 交差検知用
+const int FAR_LEFT_INDEX = 0; // sensor_pins の 12番
+const int LEFT_INDEX = 0;     // active_sensor_pins の左端
+const int MID_LEFT_INDEX = 1;
+const int CENTER_INDEX = 2; // active_sensor_pins の中央
+const int MID_RIGHT_INDEX = 3;
+const int RIGHT_INDEX = 4; // active_sensor_pins の右端
+const int CROSS_STOP_MS = 1200;
+const int LEFT_T_TURN_SPEED = 140;
+const int LEFT_T_TURN_SPEED_SLOW = 80;
+const int LEFT_T_OVERRUN_MS = 400;
+const int INTERSECTION_CONFIRM_COUNT = 5;
+const int SENSOR_PRINT_INTERVAL_MS = 50;
+
+bool crossDetected = false;
+bool leftTDetected = false;
+bool allActiveDetected = false;
+bool allActiveTurnLeft = false;
+int leftTCount = 0;
+int allActiveCount = 0;
+unsigned long lastSensorPrintMs = 0;
+unsigned long allActiveDetectedMs = 0;
+unsigned long lastAllOnMs = 0;
+bool allOnSeen = false;
+
+const int CROSS_DETECT_WINDOW_MS = 120;
+
+// パターン認識用変数
+int currentPattern = 0;  // 現在のパターン (0-7)
+int lastPattern = 0;     // 前回のパターン
+int patternCount = 0;    // 同じパターンのカウント
+int detectedPattern = 0; // 確定したパターン (0=未確定, 1-7=確定済み)
+
+float lastError = 0.0f;
+
+void setMotorPins(int pinL, int pinR, int pinPwm, int speed);
+void setMotors(int leftSpeed, int rightSpeed);
+int readPatternPins();
+void updatePatternDetection();
+void executePattern(int pattern);
+
+bool isLineDetected(int raw)
+{
+    return raw > SENSOR_THRESHOLD; // 黒線が高値前提
+}
+
+void printSensorStates()
+{
+#if ENABLE_SENSOR_PRINT
+    unsigned long now = millis();
+    if (now - lastSensorPrintMs < SENSOR_PRINT_INTERVAL_MS)
+    {
+        return;
+    }
+    lastSensorPrintMs = now;
+
+    for (int i = 0; i < SENSOR_COUNT; i++)
+    {
+        int raw = analogRead(sensor_pins[i]);
+        int state = isLineDetected(raw) ? 1 : 0;
+        Serial.print(state);
+    }
+    Serial.print(" E:");
+    Serial.println(lastError, 2);
+#endif
+}
+
+void updateIntersectionFlags()
+{
+    int farLeftRaw = analogRead(sensor_pins[FAR_LEFT_INDEX]);
+    int leftRaw = analogRead(active_sensor_pins[LEFT_INDEX]);
+    int midLeftRaw = analogRead(active_sensor_pins[MID_LEFT_INDEX]);
+    int centerRaw = analogRead(active_sensor_pins[CENTER_INDEX]);
+    int midRightRaw = analogRead(active_sensor_pins[MID_RIGHT_INDEX]);
+    int rightRaw = analogRead(active_sensor_pins[RIGHT_INDEX]);
+
+    bool farLeft = isLineDetected(farLeftRaw);
+    bool left = isLineDetected(leftRaw);
+    bool midLeft = isLineDetected(midLeftRaw);
+    bool center = isLineDetected(centerRaw);
+    bool midRight = isLineDetected(midRightRaw);
+    bool right = isLineDetected(rightRaw);
+
+    bool cross = farLeft && left && midLeft && center && midRight && right;
+    bool leftT = farLeft && left && midLeft && center && !midRight && !right;
+    bool allActive = left && midLeft && center && midRight && right;
+
+    leftTCount = leftT ? (leftTCount + 1) : 0;
+    allActiveCount = allActive ? (allActiveCount + 1) : 0;
+    // Cross detection: if all sensors are ON within a short window, detect cross
+    if (cross)
+    {
+        allOnSeen = true;
+        lastAllOnMs = millis();
+    }
+    if (allOnSeen && (millis() - lastAllOnMs <= CROSS_DETECT_WINDOW_MS))
+    {
+        if (!crossDetected)
+        {
+            crossDetected = true;
+#if ENABLE_SENSOR_PRINT
+            Serial.println("CROSS_CONFIRMED");
+#endif
+        }
+    }
+    else if (allOnSeen && (millis() - lastAllOnMs > CROSS_DETECT_WINDOW_MS))
+    {
+        allOnSeen = false;
+    }
+
+    leftTDetected = (!crossDetected) && (leftTCount >= INTERSECTION_CONFIRM_COUNT);
+#if ENABLE_SENSOR_PRINT
+    if (leftTDetected && leftTCount == INTERSECTION_CONFIRM_COUNT)
+    {
+        Serial.println("LEFT_T_DETECTED");
+    }
+#endif
+
+    if ((!crossDetected && !leftTDetected) && (allActiveCount >= INTERSECTION_CONFIRM_COUNT))
+    {
+        if (!allActiveDetected)
+        {
+            allActiveDetected = true;
+            allActiveDetectedMs = millis();
+#if ENABLE_SENSOR_PRINT
+            Serial.println("ALL_ACTIVE_START");
+#endif
+        }
+    }
+    else if (allActiveDetected)
+    {
+        // Check if all sensors are now 0 within 100ms
+        bool allOff = !farLeft && !left && !midLeft && !center && !midRight && !right;
+        if (millis() - allActiveDetectedMs > 50)
+        {
+            allActiveDetected = false;
+            allActiveCount = 0;
+        }
+        else if (allOff)
+        {
+            allActiveTurnLeft = true;
+            allActiveDetected = false;
+            allActiveCount = 0;
+#if ENABLE_SENSOR_PRINT
+            Serial.println("ALL_ACTIVE_TURN_TRIGGER");
+#endif
+        }
+    }
+
+    if (crossDetected)
+    {
+        allOnSeen = false;
+    }
+}
+
+void turnLeftUntilLine()
+{
+    // オーバーランして少し直進
+    setMotors(BASE_SPEED, BASE_SPEED);
+    delay(LEFT_T_OVERRUN_MS);
+
+    setMotors(LEFT_T_TURN_SPEED, -LEFT_T_TURN_SPEED);
+    // もともとの道（中央）を検知しなくなるまで旋回
+    while (isLineDetected(analogRead(active_sensor_pins[CENTER_INDEX])))
+    {
+        setMotors(LEFT_T_TURN_SPEED, -LEFT_T_TURN_SPEED);
+        printSensorStates();
+        delay(5);
+    }
+
+    delay(200); // 安定化待ち
+
+    // 左側の新しいラインを検知するまで旋回（スピードを落とす）
+    while (!isLineDetected(analogRead(active_sensor_pins[CENTER_INDEX])))
+    {
+        setMotors(LEFT_T_TURN_SPEED_SLOW, -LEFT_T_TURN_SPEED_SLOW);
+        printSensorStates();
+        delay(5);
+    }
+
+    // 左折後は左側に旋回する傾向を持たせる
+    lastError = 1.5f;
+}
+
+void setMotorPins(int pinL, int pinR, int pinPwm, int speed)
+{
+    speed = constrain(speed, -255, 255);
+    if (speed >= 0)
+    {
+        digitalWrite(pinL, HIGH);
+        digitalWrite(pinR, LOW);
+        analogWrite(pinPwm, speed);
+    }
+    else
+    {
+        digitalWrite(pinL, LOW);
+        digitalWrite(pinR, HIGH);
+        analogWrite(pinPwm, -speed);
+    }
+}
+
+void setMotors(int leftSpeed, int rightSpeed)
+{
+    leftSpeed = constrain(leftSpeed, -MAX_SPEED, MAX_SPEED);
+    rightSpeed = constrain(rightSpeed, -MAX_SPEED, MAX_SPEED);
+
+    setMotorPins(M1_L, M1_R, M1_P, rightSpeed);
+    setMotorPins(M2_L, M2_R, M2_P, rightSpeed);
+    setMotorPins(M3_L, M3_R, M3_P, leftSpeed);
+    setMotorPins(M4_L, M4_R, M4_P, leftSpeed);
+}
+
+float readLineError()
+{
+    const int weights[ACTIVE_SENSOR_COUNT] = {-2, -1, 0, 1, 2};
+    long weightedSum = 0;
+    long total = 0;
+
+    for (int i = 0; i < ACTIVE_SENSOR_COUNT; i++)
+    {
+        int raw = analogRead(active_sensor_pins[i]);
+        int value = raw - SENSOR_THRESHOLD; // 黒線が高値前提（isLineDetectedと一致）
+        if (value < 0)
+        {
+            value = 0;
+        }
+        weightedSum += (long)weights[i] * value;
+        total += value;
+    }
+
+    if (total == 0)
+    {
+        if (fabs(lastError) < ERROR_DEADBAND)
+        {
+            return 0.0f; // 直進維持
+        }
+        // カーブ中に見失った場合は前回の方向へ強く曲がる
+        if (lastError > 0)
+        {
+            return 3.0f; // 右側に強く曲がる
+        }
+        else
+        {
+            return -3.0f; // 左側に強く曲がる
+        }
+    }
+
+    return (float)weightedSum / (float)total;
+}
+
+int readPatternPins()
+{
+    // PULLUPなので、押されたら(GNDに接続)LOWになる
+    int pin10 = digitalRead(PATTERN_PIN_A) == LOW ? 1 : 0;
+    int pin11 = digitalRead(PATTERN_PIN_B) == LOW ? 1 : 0;
+    int pin12 = digitalRead(PATTERN_PIN_C) == LOW ? 1 : 0;
+
+    // パターンを3ビットの数値に変換 (pin10が最上位ビット)
+    int pattern = (pin10 << 2) | (pin11 << 1) | pin12;
+    return pattern;
+}
+
+void updatePatternDetection()
+{
+    currentPattern = readPatternPins();
+
+    // パターンが0（全てOFF）の場合は無視
+    if (currentPattern == 0)
+    {
+        patternCount = 0;
+        lastPattern = 0;
+        return;
+    }
+
+    // 同じパターンが続いているかチェック
+    if (currentPattern == lastPattern)
+    {
+        patternCount++;
+
+        // 20回連続で同じパターンを検出
+        if (patternCount >= PATTERN_CONFIRM_COUNT)
+        {
+            if (detectedPattern != currentPattern)
+            {
+                detectedPattern = currentPattern;
+#if ENABLE_SENSOR_PRINT
+                Serial.print("PATTERN_DETECTED: ");
+                Serial.println(detectedPattern);
+#endif
+            }
+        }
+    }
+    else
+    {
+        // パターンが変わったのでリセット
+        lastPattern = currentPattern;
+        patternCount = 1;
+    }
+}
+
+void executePattern(int pattern)
+{
+    switch (pattern)
+    {
+    case 1: // 001: pin11のみ
+        Serial.println("PATTERN_1: Pin11 detected");
+        // ここに処理を追加
+        break;
+    case 2: // 010: pin10のみ
+        Serial.println("PATTERN_2: Pin10 detected");
+        // ここに処理を追加
+        break;
+    case 3: // 011: pin10+11
+        Serial.println("PATTERN_3: Pin10+11 detected");
+        // ここに処理を追加
+        break;
+    case 4: // 100: pin9のみ
+        Serial.println("PATTERN_4: Pin9 detected");
+        // ここに処理を追加
+        break;
+    case 5: // 101: pin9+11
+        Serial.println("PATTERN_5: Pin9+11 detected");
+        // ここに処理を追加
+        break;
+    case 6: // 110: pin9+10
+        Serial.println("PATTERN_6: Pin9+10 detected");
+        // ここに処理を追加
+        break;
+    case 7: // 111: 全て
+        Serial.println("PATTERN_7: All pins detected");
+        // ここに処理を追加
+        break;
+    default:
+        break;
+    }
+
+    // パターン実行後はリセット
+    detectedPattern = 0;
+    patternCount = 0;
+}
+
+void setup()
+{
+    Serial.begin(115200);
+
+    // パターン認識ピンをPULLUPに設定
+    pinMode(PATTERN_PIN_A, INPUT_PULLUP);
+    pinMode(PATTERN_PIN_B, INPUT_PULLUP);
+    pinMode(PATTERN_PIN_C, INPUT_PULLUP);
+
+    pinMode(M1_L, OUTPUT);
+    pinMode(M1_R, OUTPUT);
+    pinMode(M1_P, OUTPUT);
+    pinMode(M2_L, OUTPUT);
+    pinMode(M2_R, OUTPUT);
+    pinMode(M2_P, OUTPUT);
+    pinMode(M3_L, OUTPUT);
+    pinMode(M3_R, OUTPUT);
+    pinMode(M3_P, OUTPUT);
+    pinMode(M4_L, OUTPUT);
+    pinMode(M4_R, OUTPUT);
+    pinMode(M4_P, OUTPUT);
+
+    for (int i = 0; i < SENSOR_COUNT; i++)
+    {
+        pinMode(sensor_pins[i], INPUT);
+    }
+}
+
+void loop()
+{
+    // パターン認識を更新
+    updatePatternDetection();
+
+    // パターンが確定したら実行
+    if (detectedPattern > 0)
+    {
+        executePattern(detectedPattern);
+        return;
+    }
+
+    updateIntersectionFlags();
+    printSensorStates();
+
+    if (crossDetected)
+    {
+        setMotors(0, 0);
+        Serial.println("CROSS");
+        delay(CROSS_STOP_MS);
+        crossDetected = false;
+        allOnSeen = false;
+        return;
+    }
+    if (leftTDetected)
+    {
+        Serial.println("LEFT_T");
+        turnLeftUntilLine();
+        leftTDetected = false;
+        leftTCount = 0;
+    }
+    if (allActiveTurnLeft)
+    {
+        Serial.println("ALL_ACTIVE_LEFT");
+        turnLeftUntilLine();
+        allActiveTurnLeft = false;
+        allActiveDetected = false;
+        allActiveCount = 0;
+    }
+    float error = readLineError();
+
+    float diff = error - lastError;
+    lastError = error;
+
+    int correction = (int)(KP * error + KD * diff);
+    int leftSpeed = BASE_SPEED - correction;
+    int rightSpeed = BASE_SPEED + correction;
+
+    setMotors(leftSpeed, rightSpeed);
+    delay(5);
+}
