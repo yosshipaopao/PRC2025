@@ -5,6 +5,15 @@ class Motors;
 
 class Intersections
 {
+public:
+    enum DetectionType
+    {
+        NONE,
+        CROSS,
+        LEFT_T,
+        ALL_ACTIVE
+    };
+
 private:
     Sensors &sensors;
     Motors &motors;
@@ -15,14 +24,12 @@ private:
     int leftTCount;
     int allActiveCount;
     unsigned long allActiveDetectedMs;
-    unsigned long lastAllOnMs;
-    bool allOnSeen;
+    // CROSS検知用: 各センサー検知時刻
+    unsigned long crossSensorFlags[6];
 
 public:
     Intersections(Sensors &s, Motors &m);
     void updateFlags();
-    bool consumeCrossDetected();
-    bool consumeLeftTDetected();
-    bool consumeAllActiveTurnLeft();
+    DetectionType consumeDetection();
     void turnLeftUntilLine(float &lastError);
 };

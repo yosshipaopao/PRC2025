@@ -2,6 +2,7 @@
 
 // デバッグ出力設定
 #define ENABLE_SENSOR_PRINT 0 // 0:無効, 1:有効
+#define ENABLE_SERVO 1        // 0:無効, 1:有効
 
 namespace Config
 {
@@ -15,16 +16,16 @@ namespace Config
     constexpr int SERVO_PIN_4 = 46;
 
     // パターン認識用ピン定義
-    constexpr int PATTERN_PIN_A = 9;
+    constexpr int PATTERN_PIN_A = 11;
     constexpr int PATTERN_PIN_B = 10;
-    constexpr int PATTERN_PIN_C = 11;
+    constexpr int PATTERN_PIN_C = 9;
     constexpr int PATTERN_STABLE_COUNT = 20; // 20回連続で同じパターン
 
     // モーターピン定義（左ピン, 右ピン, PWMピン）
-    constexpr int MOTOR1_PIN_L = 37, MOTOR1_PIN_R = 38, MOTOR1_PIN_PWM = 39; // left motor (front)
+    constexpr int MOTOR1_PIN_L = 19, MOTOR1_PIN_R = 20, MOTOR1_PIN_PWM = 18; // left motor (front)
     constexpr int MOTOR2_PIN_L = 21, MOTOR2_PIN_R = 26, MOTOR2_PIN_PWM = 33; // left motor (back)
-    constexpr int MOTOR3_PIN_L = 35, MOTOR3_PIN_R = 36, MOTOR3_PIN_PWM = 34; // right motor (front)
-    constexpr int MOTOR4_PIN_L = 20, MOTOR4_PIN_R = 19, MOTOR4_PIN_PWM = 18; // right motor (back)
+    constexpr int MOTOR3_PIN_L = 38, MOTOR3_PIN_R = 37, MOTOR3_PIN_PWM = 39; // right motor (front)
+    constexpr int MOTOR4_PIN_L = 35, MOTOR4_PIN_R = 36, MOTOR4_PIN_PWM = 34; // right motor (back)
 
     // センサーパラメータ
     constexpr int LINE_SENSOR_COUNT = 6;
@@ -52,6 +53,8 @@ namespace Config
     constexpr int LEFT_TURN_SPEED = 140;
     constexpr int LEFT_TURN_SPEED_SLOW = 80;
     constexpr int LEFT_TURN_OVERRUN_MS = 400;
+    constexpr int LEFT_TURN_STABILIZE_MS = 200;
     constexpr int INTERSECTION_STABLE_COUNT = 5;
-    constexpr int CROSS_DETECT_WINDOW_MS = 120;
+    constexpr int ALL_ACTIVE_TIMEOUT_MS = 50;
+    constexpr int CROSS_DETECT_WINDOW_MS = 300;
 }

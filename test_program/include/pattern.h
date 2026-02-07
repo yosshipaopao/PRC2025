@@ -18,5 +18,4 @@ public:
     void updateDetection();
     bool hasDetected();
     int consumeDetected();
-    void execute(int pattern);
 };

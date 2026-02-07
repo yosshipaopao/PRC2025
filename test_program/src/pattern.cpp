@@ -70,33 +70,3 @@ int Pattern::consumeDetected()
     patternCount = 0;
     return value;
 }
-
-void Pattern::execute(int pattern)
-{
-    switch (pattern)
-    {
-    case 1:
-        Debug::println("PATTERN_1: Pin11 detected");
-        break;
-    case 2:
-        Debug::println("PATTERN_2: Pin10 detected");
-        break;
-    case 3:
-        Debug::println("PATTERN_3: Pin10+11 detected");
-        break;
-    case 4:
-        Debug::println("PATTERN_4: Pin9 detected");
-        break;
-    case 5:
-        Debug::println("PATTERN_5: Pin9+11 detected");
-        break;
-    case 6:
-        Debug::println("PATTERN_6: Pin9+10 detected");
-        break;
-    case 7:
-        Debug::println("PATTERN_7: All pins detected");
-        break;
-    default:
-        break;
-    }
-}

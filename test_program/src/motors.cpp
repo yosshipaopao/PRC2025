@@ -62,8 +62,8 @@ void Motors::set(int leftSpeed, int rightSpeed)
     leftSpeed = constrain(leftSpeed, -Config::MOTOR_MAX_SPEED, Config::MOTOR_MAX_SPEED);
     rightSpeed = constrain(rightSpeed, -Config::MOTOR_MAX_SPEED, Config::MOTOR_MAX_SPEED);
 
-    m1.run(rightSpeed);
-    m2.run(rightSpeed);
-    m3.run(leftSpeed);
-    m4.run(leftSpeed);
+    m1.run(leftSpeed);
+    m2.run(leftSpeed);
+    m3.run(rightSpeed);
+    m4.run(rightSpeed);
 }
