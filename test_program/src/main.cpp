@@ -37,6 +37,7 @@ DFRobotDFPlayerMini mp3;
 
 long start_time = 0;
 long time_stoper_start_time = 0;
+long ab_stop_start_time = 0;
 int crossCount = 0;
 bool fryingPanReleased = false;
 int unsigned long lastCrossTime = 0;
@@ -80,7 +81,11 @@ void handleCrossByCount(int count)
     {
         start_time = millis();
     }
-    else if (index == 3)
+    else if (index == 2)
+    {
+        ab_stop_start_time = millis();
+    }
+    else if (index == 4)
     {
         time_stoper_start_time = millis();
     }
@@ -259,12 +264,20 @@ void loop()
     {
         int detectedPattern = pattern.consumeDetected();
         handlePattern(detectedPattern);
-        return;
     }
 
-    while (crossCount == 4 && millis() - start_time < 1000 * (60 * 2 + 20) && millis() - time_stoper_start_time > 1000 * 10)
+    while (
+        (crossCount == 4 && millis() - start_time < 1000 * (60 * 2 + 20) && millis() - time_stoper_start_time > 1000 * 10) ||
+        (crossCount == 2 && millis() - ab_stop_start_time > 1000 * 15 && millis() - ab_stop_start_time < 1000 * 27))
     {
+
+        pattern.updateDetection();
         motors.set(0, 0);
+        if (pattern.hasDetected())
+        {
+            int detectedPattern = pattern.consumeDetected();
+            handlePattern(detectedPattern);
+        }
         delay(5);
     }
     // サーボの更新を適用
