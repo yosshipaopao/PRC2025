@@ -8,6 +8,7 @@ public:
     static void begin(unsigned long baud);
     static void setSensors(Sensors *sensors);
     static void sensorStates(float lastError);
+    static void printSensorRaw();
     static void print(const char *str);
     static void print(int value);
     static void print(float value, int decimals = 2);

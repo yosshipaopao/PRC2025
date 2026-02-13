@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <cmath>
 #include "DFRobotDFPlayerMini.h"
 #include "HardwareSerial.h"
 
@@ -28,16 +29,13 @@ Sensors sensors(sensor_pins,
 Pattern pattern(Config::PATTERN_PIN_A, Config::PATTERN_PIN_B, Config::PATTERN_PIN_C, Config::PATTERN_STABLE_COUNT);
 Intersections intersections(sensors, motors);
 
-ServoWrapper servo1;
-ServoWrapper servo2;
-ServoWrapper servo3;
-ServoWrapper servo4;
+ServoWrapper servo_arm;
+ServoWrapper servo_hand;
 HardwareSerial mp3Serial(1); // UART1
 DFRobotDFPlayerMini mp3;
 
 long start_time = 0;
-long time_stoper_start_time = 0;
-long ab_stop_start_time = 0;
+long cross_start_time = 0; // Start time for current crossCount
 int crossCount = 0;
 bool fryingPanReleased = false;
 int unsigned long lastCrossTime = 0;
@@ -45,23 +43,21 @@ const unsigned long CROSS_COOLDOWN_MS = 1000; // 1秒間のクールダウン
 
 struct CrossAction
 {
-    int servo1Angle;
-    int servo2Angle;
-    int servo3Angle;
-    int servo4Angle;
+    int servo_arm_angle;
+    int servo_hand_angle;
     int soundIndex;
     int ledState; // 1 = ON, 0 = OFF
 };
 
 const CrossAction crossActions[] = {
-    {180, 0, 0, 0, -1, 0},   // 0 初期状態
-    {180, 0, 0, 0, -1, 0},   // 1 A->B
-    {180, 0, 0, 0, 1, 1},    // 2 B -> B'
-    {5, 0, 0, 0, -1, 1},     // 3 B' -> C -> A'
-    {5, 0, 180, 180, -1, 1}, // 4 A' -> A
-    {5, 0, 180, 180, -1, 1},
-    {5, 0, 180, 180, -1, 1},
-    {5, 0, 180, 180, -1, 1},
+    {180, 0, -1, 1}, // 0 初期状態
+    {180, 0, -1, 1}, // 1 A->B
+    {180, 0, 1, 1},  // 2 B -> B'
+    {5, 0, -1, 1},   // 3 B' -> C -> A'
+    {5, 180, -1, 0}, // 4 A' -> A
+    {5, 180, -1, 0},
+    {5, 180, -1, 0},
+    {5, 180, -1, 0},
 };
 
 const int crossActionsCount = sizeof(crossActions) / sizeof(crossActions[0]);
@@ -81,13 +77,9 @@ void handleCrossByCount(int count)
     {
         start_time = millis();
     }
-    else if (index == 2)
+    if (index >= 2 && index <= 4)
     {
-        ab_stop_start_time = millis();
-    }
-    else if (index == 4)
-    {
-        time_stoper_start_time = millis();
+        cross_start_time = millis();
     }
 
     const CrossAction &action = crossActions[index];
@@ -111,10 +103,8 @@ void handleCrossByCount(int count)
         digitalWrite(Config::LED_PIN, LOW);
     }
 
-    servo1.write(action.servo1Angle);
-    servo2.write(action.servo2Angle);
-    servo3.write(action.servo3Angle);
-    servo4.write(action.servo4Angle);
+    servo_arm.write(action.servo_arm_angle);
+    servo_hand.write(action.servo_hand_angle);
 }
 
 void handlePattern(int detectedPattern)
@@ -141,7 +131,7 @@ void handlePattern(int detectedPattern)
         break;
     case 4:
         crossCount = 3;
-        fryingPanReleased = true;
+        fryingPanReleased = false;
         Debug::println("ForceSet: CrossCount -> 3");
         handleCrossByCount(crossCount);
         break;
@@ -152,7 +142,7 @@ void handlePattern(int detectedPattern)
         handleCrossByCount(crossCount);
         break;
     case 6:
-        servo3.set(180, 0, 5000);
+        servo_hand.set(180, 0, 5000);
         break;
     case 7:
         Debug::println("PATTERN_7: All pins detected");
@@ -172,14 +162,10 @@ void setup()
     motors.setup();
     sensors.setup();
     mp3Serial.begin(9600, SERIAL_8N1, 7, 8);
-    servo1.setPeriodHertz(50);
-    servo1.attach(Config::SERVO_PIN_1, minServoPulseWidth, maxServoPulseWidth);
-    servo2.setPeriodHertz(50);
-    servo2.attach(Config::SERVO_PIN_2, minServoPulseWidth, maxServoPulseWidth);
-    servo3.setPeriodHertz(50);
-    servo3.attach(Config::SERVO_PIN_3, minServoPulseWidth, maxServoPulseWidth);
-    servo4.setPeriodHertz(50);
-    servo4.attach(Config::SERVO_PIN_4, minServoPulseWidth, maxServoPulseWidth);
+    servo_arm.setPeriodHertz(50);
+    servo_arm.attach(Config::SERVO_PIN_1, minServoPulseWidth, maxServoPulseWidth);
+    servo_hand.setPeriodHertz(50);
+    servo_hand.attach(Config::SERVO_PIN_3, minServoPulseWidth, maxServoPulseWidth);
 
     while (!mp3.begin(mp3Serial))
     {
@@ -191,10 +177,8 @@ void setup()
     delay(500);
 
     // initialize servos to 0 degree
-    servo1.write(0);
-    servo2.write(0);
-    servo3.write(0);
-    servo4.write(0);
+    servo_arm.write(0);
+    servo_hand.write(0);
 }
 
 void loop()
@@ -203,6 +187,7 @@ void loop()
 
     intersections.updateFlags();
     Debug::sensorStates(lastError);
+    // Debug::printSensorRaw();
 
     Intersections::DetectionType detection = intersections.consumeDetection();
 
@@ -210,6 +195,7 @@ void loop()
     {
     case Intersections::CROSS:
     {
+        Debug::println("CROSS_DETECTED");
         unsigned long currentTime = millis();
         if (currentTime - lastCrossTime >= CROSS_COOLDOWN_MS)
         {
@@ -234,11 +220,11 @@ void loop()
         {
             fryingPanReleased = true;
             motors.set(0, 0);
-            servo3.set(180, 0, 5000);
-            int startTime = millis();
+            servo_hand.set(180, 0, 5000);
+            unsigned long startTime = millis();
             while (millis() - startTime < 5000)
             {
-                servo3.applyWrite();
+                servo_hand.applyWrite();
                 delay(5);
             }
         }
@@ -266,9 +252,36 @@ void loop()
         handlePattern(detectedPattern);
     }
 
+    // Apply servo_arm shake effect for crossCount == 3 within 10 seconds
+    if (crossCount == 3 && (millis() - cross_start_time < 5 * 1000))
+    {
+        motors.set(0, 0);
+        unsigned long elapsed = millis() - cross_start_time;
+        float cycle = (elapsed % 1000) / 1000.0f; // 0-1 cycle over 1 second
+        float shakeAngle = 180 + 30 * sin(2.0f * M_PI * cycle);
+        servo_arm.write((int)shakeAngle);
+        servo_arm.applyWrite();
+        delay(5);
+        return;
+    }
+    // Rotate servo_arm from 180 to 5 over 1 second with sin curve after 10 seconds when crossCount == 3
+    if (crossCount == 3 && (millis() - cross_start_time >= 5 * 1000) && (millis() - cross_start_time < 6 * 1000))
+    {
+        motors.set(0, 0);
+        unsigned long elapsed = millis() - cross_start_time - 5000;
+        float progress = elapsed / 1000.0f; // 0-1 over 1 second
+        // Use sin curve for smooth rotation (easing-out effect)
+        float smoothProgress = sin(progress * M_PI / 2.0f);
+        float rotationAngle = 180 + (5 - 180) * smoothProgress;
+        servo_arm.write((int)rotationAngle);
+        servo_arm.applyWrite();
+        delay(5);
+        return;
+    }
+
     while (
-        (crossCount == 4 && millis() - start_time < 1000 * (60 * 2 + 20) && millis() - time_stoper_start_time > 1000 * 10) ||
-        (crossCount == 2 && millis() - ab_stop_start_time > 1000 * 15 && millis() - ab_stop_start_time < 1000 * 27))
+        (crossCount == 4 && millis() - start_time < 1000 * (60 * 2 + 20) && millis() - cross_start_time > 1000 * 10) ||
+        (crossCount == 2 && millis() - cross_start_time > 1000 * 15 && millis() - cross_start_time < 1000 * 32))
     {
 
         pattern.updateDetection();
@@ -281,10 +294,8 @@ void loop()
         delay(5);
     }
     // サーボの更新を適用
-    servo1.applyWrite();
-    servo2.applyWrite();
-    servo3.applyWrite();
-    servo4.applyWrite();
+    servo_arm.applyWrite();
+    servo_hand.applyWrite();
 
     delay(5);
 }

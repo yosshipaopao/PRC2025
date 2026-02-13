@@ -1,8 +1,6 @@
 #pragma once
 
-// デバッグ出力設定
-#define ENABLE_SENSOR_PRINT 0 // 0:無効, 1:有効
-#define ENABLE_SERVO 1        // 0:無効, 1:有効
+#define ENABLE_SERVO 1 // 0:無効, 1:有効
 
 namespace Config
 {
@@ -32,26 +30,4 @@ namespace Config
     constexpr int DEBUG_SENSOR_PRINT_INTERVAL_MS = 50;
     constexpr int LINE_SENSOR_PINS[LINE_SENSOR_COUNT] = {12, 17, 16, 15, 14, 13};
     constexpr int LINE_ACTIVE_SENSOR_OFFSET = 1; // LINE_SENSOR_PINS[1..5] をアクティブとして使用
-
-    // ライントレース制御パラメータ
-    constexpr int LINE_BASE_SPEED = 110; // 0-255
-    constexpr int MOTOR_MAX_SPEED = 250; // 0-255
-    constexpr float LINE_KP = 40.0f;     // 比例ゲイン
-    constexpr float LINE_KD = 20.0f;     // 微分ゲイン
-    constexpr float LINE_ERROR_DEADBAND = 0.2f;
-
-    // 交差検知用
-    constexpr int LINE_FAR_LEFT_INDEX = 0; // line_sensor_pins の 12番
-    constexpr int LINE_LEFT_INDEX = 0;     // active_line_sensors の左端
-    constexpr int LINE_MID_LEFT_INDEX = 1;
-    constexpr int LINE_CENTER_INDEX = 2; // active_line_sensors の中央
-    constexpr int LINE_MID_RIGHT_INDEX = 3;
-    constexpr int LINE_RIGHT_INDEX = 4; // active_line_sensors の右端
-    constexpr int LEFT_TURN_SPEED = 140;
-    constexpr int LEFT_TURN_SPEED_SLOW = 80;
-    constexpr int LEFT_TURN_OVERRUN_MS = 400;
-    constexpr int LEFT_TURN_STABILIZE_MS = 200;
-    constexpr int INTERSECTION_STABLE_COUNT = 7;
-    constexpr int ALL_ACTIVE_TIMEOUT_MS = 200;
-    constexpr int CROSS_DETECT_WINDOW_MS = 400;
 }

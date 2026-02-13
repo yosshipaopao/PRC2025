@@ -107,3 +107,22 @@ void Debug::sensorStates(float lastError)
     Debug::print(" E:");
     Debug::println(lastError, 2);
 }
+
+void Debug::printSensorRaw()
+{
+    if (!globalSensors)
+    {
+        return;
+    }
+
+    int count = globalSensors->getSensorCount();
+    for (int i = 0; i < count; i++)
+    {
+        if (i > 0)
+        {
+            Debug::print(",");
+        }
+        Debug::print(globalSensors->readRaw(i));
+    }
+    Debug::println();
+}
